@@ -10,4 +10,4 @@ From there you then upload the spss related to the trial case so that the script
 
 
 **Important To Notice**
-This only extracts the questions from the plantiff and defense question. This means that you would have to still recode the general question for yourself. This was done as usually these questions are noted by a senior consultant tho
+This only extracts the questions from the plantiff and defense question. This means that you would have to still recode the general question for yourself. This was done as usually these questions are noted by a senior consultant through comments which currently can not be read through the pdf reader we use. Make sure to double check that all the highlighted questions from the pdf are included inside the rescript, the app will tell you which questions it could not extract to help you out.
