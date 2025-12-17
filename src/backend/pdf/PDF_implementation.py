@@ -3,28 +3,9 @@ import re
 import fitz  # PyMuPDF for handling highlights
 import io
 from abc import ABC, abstractmethod
+from .PDF_abstract import PDFProcessor
 
-
-class PDFProcessor(ABC):
-    """Abstract base class for PDF processing"""
-    
-    @abstractmethod
-    def find_pages_with_text(self, pdf_path, search_text: str) -> list[int]:
-        """Find pages containing specific text"""
-        pass
-    
-    @abstractmethod
-    def extract_highlighted_statements(self, pdf_path) -> list[str]:
-        """Extract highlighted text from PDF"""
-        pass
-    
-    @abstractmethod
-    def split_pdf_by_pages(self, pdf_file, page_numbers: list[int], output_path=None) -> str | bytes:
-        """Split PDF into specific pages"""
-        pass
-
-
-class PDFHandler(PDFProcessor):
+class PDFHandler1(PDFProcessor):
     """Handles PDF processing operations"""
     
     def find_pages_with_text(self, pdf_path, search_text: str) -> list[int]:

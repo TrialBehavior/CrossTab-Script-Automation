@@ -1,9 +1,9 @@
-"""Q4 PDF extraction component"""
 import streamlit as st
 import io
+from src.backend.pdf.PDF_abstract import PDFProcessor
+from src.backend.pdf.PDF_implementation import PDFHandler1
 
-
-def render_pdf_extractor(pdf_handler):
+def render_pdf_extractor():
     """
     Render the PDF extraction component.
     
@@ -13,6 +13,7 @@ def render_pdf_extractor(pdf_handler):
     Returns:
         None (updates session state)
     """
+    pdf_handler = PDFHandler1()
     st.subheader("📄 Extract Highlighted Arguments from Q4 PDF")
     
     Q4_file = st.file_uploader("Upload Q4 PDF file", type="pdf", key="q4")
@@ -47,9 +48,7 @@ def _extract_arguments(Q4_file, pdf_handler):
     if defense_pages:
         Q4_file.seek(0)
         defense_pdf_bytes = pdf_handler.split_pdf_by_pages(Q4_file, defense_pages)
-        st.session_state.defense_highlights = pdf_handler.extract_highlighted_statements(
-            io.BytesIO(defense_pdf_bytes)
-        )
+        st.session_state.defense_highlights = pdf_handler.extract_highlighted_statements(io.BytesIO(defense_pdf_bytes))
     else:
         st.warning("⚠️ No highlighted text found in Defense Arguments pages")
 
