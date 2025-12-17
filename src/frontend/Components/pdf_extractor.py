@@ -56,9 +56,7 @@ def _extract_arguments(Q4_file, pdf_handler):
     if plaintiff_pages:
         Q4_file.seek(0)
         plaintiff_pdf_bytes = pdf_handler.split_pdf_by_pages(Q4_file, plaintiff_pages)
-        st.session_state.plaintiff_highlights = pdf_handler.extract_highlighted_statements(
-            io.BytesIO(plaintiff_pdf_bytes)
-        )
+        st.session_state.plaintiff_highlights = pdf_handler.extract_highlighted_statements(io.BytesIO(plaintiff_pdf_bytes))
     else:
         st.warning("⚠️ No highlighted text found in Plaintiff Arguments pages")
         
