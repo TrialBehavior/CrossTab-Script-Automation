@@ -1,7 +1,8 @@
 **Purpose Of This Script**
 This is specifically for recoding the spss portion related to correlation crosstab. Work on the other ones are in the work! Essentially you upload the Posted Q4 pdf as well as the sav with all the survey's question. The script will then extract all of the text that our senior consultants have highlighted and from there a ui will popup allowing you to customize which numbers correlates with what.
 
-<img width="860" height="511" alt="image" src="https://github.com/user-attachments/assets/8739771b-16a7-40da-bd90-b6a1d99a964f" />
+<img width="881" height="269" alt="image" src="https://github.com/user-attachments/assets/c0d580d2-f8a8-4182-9ac8-8e397c32fef3" />
+
 
 
 
