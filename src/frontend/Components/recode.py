@@ -1,7 +1,6 @@
 """Recode settings configuration component"""
 import streamlit as st
 
-
 def render_recode_configurator():
     """
     Render the recode settings configuration UI.
@@ -35,11 +34,12 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
     """
     with st.expander(f"{category} {index}: {statement[:60]}..."):
         st.write(f"**Full statement:** {statement}")
-        
+        st.divider()
+
         # First range
+        st.write("**First Range:**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.write("**First Range:**")
             r1_start = st.number_input(
                 "Start",
                 min_value=1,
@@ -67,11 +67,11 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
                 key=f"{prefix}_r1_becomes_{index}"
             )
             st.session_state.recode_settings[statement]['range1_becomes'] = r1_becomes
-        
+
         # Second range
+        st.write("**Second Range:**")
         col4, col5, col6 = st.columns(3)
         with col4:
-            st.write("**Second Range:**")
             r2_start = st.number_input(
                 "Start",
                 min_value=1,

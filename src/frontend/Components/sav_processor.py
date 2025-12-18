@@ -3,7 +3,8 @@ import streamlit as st
 import pyreadstat
 import tempfile
 import os
-from src.backend.Sav import SavHandler, RecodeResult
+from src.backend.sav.sav_abstract import RecodeResult
+from src.backend.sav.sav_handler import SavHandler
 
 
 def render_sav_processor():
