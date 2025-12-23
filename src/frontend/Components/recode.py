@@ -9,17 +9,17 @@ def render_recode_configurator():
     """
     st.subheader("Configure Recode Settings Per Question")
     
-    # Plaintiff Questions
-    if st.session_state.plaintiff_highlights:
-        st.write("**Plaintiff Questions:**")
-        for i, statement in enumerate(st.session_state.plaintiff_highlights, 1):
-            _render_statement_config(statement, i, "Plaintiff", "p")
+    # name1 Questions
+    if st.session_state.name1_highlights:
+        st.write(f"**{st.session_state.name1} Questions:**")
+        for i, statement in enumerate(st.session_state.name1_highlights, 1):
+            _render_statement_config(statement, i, f"{st.session_state.name1}", "p")
     
-    # Defense Questions
-    if st.session_state.defense_highlights:
-        st.write("**Defense Questions:**")
-        for i, statement in enumerate(st.session_state.defense_highlights, 1):
-            _render_statement_config(statement, i, "Defense", "d")
+    # name2 Questions
+    if st.session_state.name2_highlights:
+        st.write(f"**{st.session_state.name1} Questions:**")
+        for i, statement in enumerate(st.session_state.name2_highlights, 1):
+            _render_statement_config(statement, i, st.session_state.name2, "d")
 
 
 def _render_statement_config(statement: str, index: int, category: str, prefix: str):
@@ -29,7 +29,7 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
     Args:
         statement: The statement text
         index: Statement number (for UI labeling)
-        category: 'Plaintiff' or 'Defense'
+        category: 'name1' or 'name2'
         prefix: Key prefix ('p' or 'd')
     """
     with st.expander(f"{category} {index}: {statement[:60]}..."):
