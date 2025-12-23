@@ -5,7 +5,7 @@ from .sav_abstract import SavProcessor, RecodeResult
 class SavHandler(SavProcessor):
     """Handles SAV file processing and SPSS syntax generation"""
     
-    def __init__(self, sav: list[tuple[str, str]]):
+    def __init__(self, sav: list[tuple[str, str]],name1: str = "Plaintiff", name2: str = "Defense"):
         """
         Initialize the SAV handler.
         
@@ -19,7 +19,8 @@ class SavHandler(SavProcessor):
         self._script: str = ""
         self._matched: list[tuple[str, str]] = []
         self._unmatched: list[tuple[str, str]] = []
-    
+        self.name1 = name1
+        self.name2 = name2
     def _build_label_mapping(self) -> dict[str, str]:
         """Build mapping from labels to column names"""
         mapping: dict[str, str] = {}
@@ -79,7 +80,7 @@ class SavHandler(SavProcessor):
             f"({settings['range2_start']} thru {settings['range2_end']}={settings['range2_becomes']}) "
             f"into {column}r.\n"
             f"variable labels {column}r '{question}'.\n"
-            f"value labels {column}r 1 'Plaintiff' 2 'Defense'.\n"
+            f"value labels {column}r 1 '{self.name1}' 2 '{self.name2}'.\n"
             f"execute.\n\n"
         )
     
@@ -109,8 +110,8 @@ class SavHandler(SavProcessor):
     
     def generate_recode_script(
         self, 
-        plaintiff_questions: list[str], 
-        defense_questions: list[str], 
+        name1_questions: list[str], 
+        name2_questions: list[str], 
         recode_settings: dict[str, dict[str, int]]
     ) -> RecodeResult:
         """
@@ -131,8 +132,8 @@ class SavHandler(SavProcessor):
         self._unmatched = []
         
         # Process both question sets
-        self._process_questions(plaintiff_questions, 'Plaintiff', recode_settings)
-        self._process_questions(defense_questions, 'Defense', recode_settings)
+        self._process_questions(name1_questions, self.name1, recode_settings)
+        self._process_questions(name2_questions, self.name2, recode_settings)
         
         return RecodeResult(
             script=self._script,

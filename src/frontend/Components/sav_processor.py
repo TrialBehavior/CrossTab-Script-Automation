@@ -29,8 +29,8 @@ def render_sav_processor():
 
 def _has_extracted_statements() -> bool:
     """Check if statements have been extracted from Q4 PDF"""
-    return (st.session_state.plaintiff_highlights is not None and 
-            st.session_state.defense_highlights is not None)
+    return (st.session_state.name1_highlights is not None and 
+            st.session_state.name2_highlights is not None)
 
 
 def _process_sav_file(sav_file):
@@ -50,11 +50,11 @@ def _process_sav_file(sav_file):
         df, meta = pyreadstat.read_sav(tmp_path)
         
         # Create SAV handler and generate script
-        sav_handler = SavHandler(list(meta.column_names_to_labels.items()))
+        sav_handler = SavHandler(list(meta.column_names_to_labels.items()),st.session_state.name1,st.session_state.name2)
         
         result: RecodeResult = sav_handler.generate_recode_script(
-            plaintiff_questions=st.session_state.plaintiff_highlights,
-            defense_questions=st.session_state.defense_highlights,
+            name1_questions=st.session_state.name1_highlights,
+            name2_questions=st.session_state.name2_highlights,
             recode_settings=st.session_state.recode_settings
         )
         
