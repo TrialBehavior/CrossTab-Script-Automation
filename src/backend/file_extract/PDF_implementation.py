@@ -143,12 +143,14 @@ class PDFHandler1(PDFProcessor):
                             span_rect = fitz.Rect(span["bbox"])
                             for yellow_rect in yellow_rects:
                                 if span_rect.intersects(yellow_rect):
-                                    highlighted_spans.append({
-                                        'page': page_num + 1,
-                                        'text': text,
-                                        'bbox': span["bbox"],
-                                        'y_pos': span["bbox"][1]
-                                    })
+                                    if not self._is_numeric_span(text):
+                                        print(f"Found span: '{text}' at y_pos: {span['bbox'][1]}")  
+                                        highlighted_spans.append({
+                                            'page': page_num + 1,
+                                            'text': text,
+                                            'bbox': span["bbox"],
+                                            'y_pos': span["bbox"][1]
+                                        })
                                     break
         
         return highlighted_spans
@@ -203,10 +205,13 @@ class PDFHandler1(PDFProcessor):
         
         # Remove statistics patterns
         combined_text = re.sub(r'\d+\.\d+\s+(?:\d+\s*%\s*)+', '', combined_text)
-        combined_text = re.sub(r'\s+\d+\s*%', '', combined_text)
         combined_text = re.sub(r'^\d+\s*%\s*', '', combined_text)
         
         # Split by period to get individual statements
         statements = [s.strip() + '.' for s in combined_text.split('.') if s.strip()]
         
         return statements
+    def _is_numeric_span(self, text: str) -> bool:
+        """Check if a span contains only numbers and whitespace"""
+        text = re.sub(r'\s+\d+\s*%', '', text)
+        return text.strip().replace(' ', '').isdigit()
