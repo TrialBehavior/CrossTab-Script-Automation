@@ -1,0 +1,14 @@
+# Core Application Dependencies
+streamlit>=1.28.0
+pyreadstat>=1.2.0
+pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
+fitz
+# Testing Dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Additional dependencies that may be needed
+# (these are typically installed with the above packages, but listing for clarity)
+pandas>=2.0.0  # Required by pyreadstat
+Pillow>=10.0.0  # Image processing (used by pdfplumber)
