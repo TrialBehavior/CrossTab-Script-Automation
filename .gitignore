@@ -1,2 +1,4 @@
 pdf_testing/*
 tests/*
+tests/
+src/backend/file_extract/file_test.py
