@@ -48,8 +48,12 @@ def _process_sav_file(sav_file):
         # Read SAV file
         df, meta = pyreadstat.read_sav(tmp_path)
         
-        # Create SAV handler and generate script
-        sav_handler = SavHandler(list(meta.column_names_to_labels.items()),st.session_state.name1,st.session_state.name2)
+        # Create SPSS syntax generator and generate script
+        sav_handler = SPSSSyntaxGenerator(
+            list(meta.column_names_to_labels.items()),
+            st.session_state.name1,
+            st.session_state.name2
+        )
         
         result: RecodeResult = sav_handler.generate_recode_script(
             name1_questions=st.session_state.name1_highlights,
