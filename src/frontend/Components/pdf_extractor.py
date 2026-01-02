@@ -17,7 +17,11 @@ def render_pdf_extractor():
     st.subheader("📄 Extract Highlighted Arguments from Q4 PDF")
     
     Q4_file = st.file_uploader("Upload Q4 PDF file", type="pdf", key="q4")
+    Q4_file_doc = st.file_uploader("Upload Q4 DOC file", type = "docx", key="q4_doc")
     
+    if Q4_file_doc is not None:
+        pdf_bytes = pdf_handler.docx_to_pdf(Q4_file_doc)
+        Q4_file = io.BytesIO(pdf_bytes)
     if Q4_file is not None:
         if st.button("🔍 Extract Arguments", type="primary"):
             with st.spinner("Processing Q4 PDF..."):

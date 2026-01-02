@@ -74,7 +74,10 @@ class SPSSProcessor(ABC):
             Column name if found (e.g., "Q32"), None otherwise
         """
         pass
-    
+    @abstractmethod
+    def get_all_general_question(self,name1: str = "Plaaffs",name2:str = "Defaffs") -> list [tuple[str,str]]:
+        "get a list of all of the questions not part of the Plaaffs or Defaffs"
+        pass
     def get_matched_questions(self) -> list[tuple[str, str]]:
         """
         Get list of successfully matched questions.

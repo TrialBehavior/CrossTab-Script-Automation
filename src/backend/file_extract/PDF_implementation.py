@@ -4,7 +4,10 @@ import fitz  # PyMuPDF for handling highlights
 import io
 from abc import ABC, abstractmethod
 from .PDF_abstract import PDFProcessor
-
+import tempfile
+import os
+import docx2pdf
+import pythoncom
 class PDFHandler1(PDFProcessor):
     """Handles PDF processing operations"""
     
@@ -197,7 +200,46 @@ class PDFHandler1(PDFProcessor):
                 unique_highlights.append(h)
         
         return unique_highlights
-    
+    def docx_to_pdf(self, docx_file) -> bytes:
+        """
+        Convert DOCX file to PDF.
+        
+        Args:
+            docx_file: File-like object or path to DOCX file
+            
+        Returns:
+            PDF as bytes
+        """
+        import pythoncom
+        
+        # Initialize COM for this thread
+        pythoncom.CoInitialize()
+        
+        try:
+            # Save uploaded DOCX to temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_docx:
+                if hasattr(docx_file, 'read'):
+                    tmp_docx.write(docx_file.read())
+                else:
+                    with open(docx_file, 'rb') as f:
+                        tmp_docx.write(f.read())
+                tmp_docx_path = tmp_docx.name
+            
+            # Convert to PDF
+            tmp_pdf_path = tmp_docx_path.replace('.docx', '.pdf')
+            docx2pdf.convert(tmp_docx_path, tmp_pdf_path)
+            
+            # Read the PDF bytes
+            with open(tmp_pdf_path, 'rb') as pdf_file:
+                pdf_bytes = pdf_file.read()
+            
+            # Clean up temp files
+            os.unlink(tmp_docx_path)
+            os.unlink(tmp_pdf_path)
+            return pdf_bytes
+        finally:
+            # Always uninitialize COM
+            pythoncom.CoUninitialize()
     def _clean_and_split_statements(self, highlights) -> list[str]:
         """Clean text and split into individual statements"""
         # Combine all text into one string
