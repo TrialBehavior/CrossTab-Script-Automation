@@ -14,22 +14,12 @@ def render_sav_processor():
     """
     st.subheader("📊 SPSS Syntax Generator")
     
-    # Check if Q4 has been extracted
-    if not _has_extracted_statements():
-        st.warning("⚠️ Please extract Q4 arguments first before uploading SAV file")
-        return
-    
     # SAV file uploader
     sav_file = st.file_uploader("Upload SAV/SPSS file", type="sav", key="sav")
     
     if sav_file is not None:
         _process_sav_file(sav_file)
 
-
-def _has_extracted_statements() -> bool:
-    """Check if statements have been extracted from Q4 PDF"""
-    return (st.session_state.name1_highlights is not None and 
-            st.session_state.name2_highlights is not None)
 
 
 def _process_sav_file(sav_file):

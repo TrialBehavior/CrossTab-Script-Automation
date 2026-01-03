@@ -1,6 +1,8 @@
 """Concrete implementation of SPSSProcessor with matching logic"""
 import re
+import pyreadstat
 from .Spss_base_abstract import SPSSProcessor, SPSSResult
+import io
 
 
 class SPSSMatchProcessor(SPSSProcessor):
@@ -122,3 +124,48 @@ class SPSSMatchProcessor(SPSSProcessor):
             general_questions.append((column, label))
         
         return general_questions
+    @staticmethod
+    def get_essentials_from_sav(sav_file, name1: str, name2: str) -> dict:
+        """
+        Extract essential data from SAV file for SPSS processing.
+        
+        Args:
+            sav_file: Uploaded SAV file (file-like object or path)
+            name1: First party name
+            name2: Second party name
+            
+        Returns:
+            Dictionary containing df, meta, sav_labels, and names
+        """
+        import pyreadstat
+        import tempfile
+        import os
+        
+        # Handle UploadedFile objects - save to temp file
+        if hasattr(sav_file, 'read'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.sav') as tmp_file:
+                tmp_file.write(sav_file.read())
+                tmp_path = tmp_file.name
+            
+            # Read the SAV file from temp path
+            df, meta = pyreadstat.read_sav(tmp_path)
+            
+            # Clean up temp file
+            os.unlink(tmp_path)
+        else:
+            # It's already a path string
+            df, meta = pyreadstat.read_sav(sav_file)
+        
+        # Extract sav_labels as list of (column_name, label) tuples
+        sav_labels = []
+        for col in df.columns:
+            label = meta.column_names_to_labels.get(col, col)
+            sav_labels.append((col, label))
+        
+        return {
+            'df': df,
+            'meta': meta,
+            'sav_labels': sav_labels,
+            'name1': name1,
+            'name2': name2
+        }

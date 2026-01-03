@@ -1,7 +1,7 @@
 """Recode settings configuration component"""
 import streamlit as st
 
-def render_recode_configurator():
+def _render_recode_configurator():
     """
     Render the recode settings configuration UI.
     

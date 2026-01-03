@@ -17,7 +17,21 @@ class SPSSProcessor(ABC):
     with variable labels. Subclasses implement specific operations like
     syntax generation, reporting, or data export.
     """
-    
+    @staticmethod
+    @abstractmethod
+    def get_essentials_from_sav(sav_file, name1: str, name2: str) -> dict:
+        """
+        Extract essential data from SAV file for SPSS processing.
+        
+        Args:
+            sav_file: Uploaded SAV file (file-like object)
+            name1: First party name
+            name2: Second party name
+            
+        Returns:
+            Dictionary containing df, meta, sav_labels, and names
+        """
+        pass
     def __init__(self, sav_labels: list[tuple[str, str]], name1: str, name2: str):
         """
         Initialize SPSS processor.
@@ -75,7 +89,7 @@ class SPSSProcessor(ABC):
         """
         pass
     @abstractmethod
-    def get_all_general_question(self,name1: str = "Plaaffs",name2:str = "Defaffs") -> list [tuple[str,str]]:
+    def get_all_general_questions(self,name1: str = "Plaaffs",name2:str = "Defaffs") -> list [tuple[str,str]]:
         "get a list of all of the questions not part of the Plaaffs or Defaffs"
         pass
     def get_matched_questions(self) -> list[tuple[str, str]]:
