@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from .PDF_abstract import PDFProcessor
 import tempfile
 import os
-import docx2pdf
 import pythoncom
 class PDFHandler1(PDFProcessor):
     """Handles PDF processing operations"""
@@ -68,8 +67,23 @@ class PDFHandler1(PDFProcessor):
             
             # Merge spans on same line
             merged_highlights = self._merge_spans_on_line(highlighted_spans)
-            
-            all_highlights.extend(merged_highlights)
+            cleaned = []
+            for h in merged_highlights:
+                t = h["text"]
+
+                # remove leading decimal (common "score" prefix)
+                t = re.sub(r'^\s*\d+\.\d+\s+', '', t)
+
+                # remove a trailing block of 2+ percentages (jury allocation noise)
+                t = re.sub(r'(?:\s*\d+\s*%\s*){2,}\s*$', '', t)
+
+                # normalize spaces
+                t = re.sub(r'\s{2,}', ' ', t).strip()
+
+                if t:  # keep only if something meaningful remains
+                    h["text"] = t
+                    cleaned.append(h)
+            all_highlights.extend(cleaned)
         
         doc.close()
         
@@ -147,7 +161,6 @@ class PDFHandler1(PDFProcessor):
                             for yellow_rect in yellow_rects:
                                 if span_rect.intersects(yellow_rect):
                                     if not self._is_numeric_span(text):
-                                        print(f"Found span: '{text}' at y_pos: {span['bbox'][1]}")  
                                         highlighted_spans.append({
                                             'page': page_num + 1,
                                             'text': text,
@@ -200,46 +213,7 @@ class PDFHandler1(PDFProcessor):
                 unique_highlights.append(h)
         
         return unique_highlights
-    def docx_to_pdf(self, docx_file) -> bytes:
-        """
-        Convert DOCX file to PDF.
-        
-        Args:
-            docx_file: File-like object or path to DOCX file
-            
-        Returns:
-            PDF as bytes
-        """
-        import pythoncom
-        
-        # Initialize COM for this thread
-        pythoncom.CoInitialize()
-        
-        try:
-            # Save uploaded DOCX to temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_docx:
-                if hasattr(docx_file, 'read'):
-                    tmp_docx.write(docx_file.read())
-                else:
-                    with open(docx_file, 'rb') as f:
-                        tmp_docx.write(f.read())
-                tmp_docx_path = tmp_docx.name
-            
-            # Convert to PDF
-            tmp_pdf_path = tmp_docx_path.replace('.docx', '.pdf')
-            docx2pdf.convert(tmp_docx_path, tmp_pdf_path)
-            
-            # Read the PDF bytes
-            with open(tmp_pdf_path, 'rb') as pdf_file:
-                pdf_bytes = pdf_file.read()
-            
-            # Clean up temp files
-            os.unlink(tmp_docx_path)
-            os.unlink(tmp_pdf_path)
-            return pdf_bytes
-        finally:
-            # Always uninitialize COM
-            pythoncom.CoUninitialize()
+    
     def _clean_and_split_statements(self, highlights) -> list[str]:
         """Clean text and split into individual statements"""
         # Combine all text into one string
@@ -248,12 +222,58 @@ class PDFHandler1(PDFProcessor):
         # Remove statistics patterns
         combined_text = re.sub(r'\d+\.\d+\s+(?:\d+\s*%\s*)+', '', combined_text)
         combined_text = re.sub(r'^\d+\s*%\s*', '', combined_text)
-        
+        # print(combined_text)
         # Split by period to get individual statements
-        statements = [s.strip() + '.' for s in combined_text.split('.') if s.strip()]
+        statements = self._split_sentences_heuristic(combined_text)
         
         return statements
     def _is_numeric_span(self, text: str) -> bool:
         """Check if a span contains only numbers and whitespace"""
         text = re.sub(r'\s+\d+\s*%', '', text)
         return text.strip().replace(' ', '').isdigit()
+    def _split_sentences_heuristic(self, text: str) -> list[str]:
+        ABBR = {
+            "mr", "mrs", "ms", "dr", "prof", "sr", "jr",
+            "st", "mt", "no", "vs", "etc", "e.g", "i.e",
+            "inc", "co", "corp", "ltd", "llc",
+            "u.s", "u.k", "d.c"
+        }
+
+        sentences = []
+        start = 0
+        i = 0
+        n = len(text)
+
+        while i < n:
+            ch = text[i]
+            if ch in ".!?":
+                # grab the token immediately before the punctuation
+                m = re.search(r'([A-Za-z](?:[A-Za-z\.]{0,10}))$', text[start:i].strip())
+                prev_token = (m.group(1) if m else "").strip()
+
+                # normalize token like "Mr." -> "mr", "U.S." -> "u.s"
+                prev_norm = prev_token.rstrip(".").lower()
+
+                # abbreviation or initial like "J."
+                is_abbrev = prev_norm in ABBR or re.fullmatch(r"[A-Za-z]", prev_norm) is not None
+
+                # sentence boundary signal: punctuation + whitespace + likely sentence start
+                next_is_new_sentence = (
+                    i == n - 1 or
+                    (i + 1 < n and text[i+1].isspace() and
+                    i + 2 < n and (text[i+2].isupper() or text[i+2] in '"([\''))
+                )
+
+                if next_is_new_sentence and not is_abbrev:
+                    sentences.append(text[start:i+1].strip())
+                    start = i + 1
+
+            i += 1
+
+        tail = text[start:].strip()
+        if tail:
+            if tail[-1] not in ".!?":
+                tail += "."
+            sentences.append(tail)
+
+        return sentences

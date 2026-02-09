@@ -14,7 +14,6 @@ def render_get_sav():
     
     if uploaded_sav is not None:
         with st.spinner("Processing SAV file..."):
-            essentials = SPSSMatchProcessor.get_essentials_from_sav(uploaded_sav,st.session_state.name1,st.session_state.name2)
-            st.session_state.sav_data = essentials
+            st.session_state.sav_data = SPSSMatchProcessor.get_essentials_from_sav(uploaded_sav,st.session_state.name1,st.session_state.name2)
         
         st.success(f"SAV file uploaded: {uploaded_sav.name}")

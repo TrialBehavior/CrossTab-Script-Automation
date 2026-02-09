@@ -1,7 +1,7 @@
 """Concrete implementation of SPSSProcessor with matching logic"""
 import re
 import pyreadstat
-from .Spss_base_abstract import SPSSProcessor, SPSSResult
+from .spss_base_abstract import SPSSProcessor, SPSSResult
 import io
 
 
@@ -109,15 +109,61 @@ class SPSSMatchProcessor(SPSSProcessor):
         """
         general_questions = []
         
-        # Metadata fields to exclude
-        metadata_fields = {"FirstName", "LastName", "J_Number", "Final Leaning"}
+        # Text patterns to exclude (check in label text)
+        text_input_patterns = [
+            'first name',
+            'last name',
+            'firstname', 
+            'lastname',
+            'enter your name',
+            'please enter',
+            'please type',
+            'address',
+            'email',
+            'phone',
+            'zip code',
+            'zipcode',
+            'city',
+            'state',
+            'comments'
+        ]
+        
+        # Metadata fields to exclude (check in column names)
+        metadata_columns = {
+            'firstname',
+            'lastname', 
+            'first_name',
+            'last_name',
+            'j_number',
+            'final_leaning',
+            'email',
+            'phone',
+            'address',
+            'zipcode',
+            'zip_code'
+        }
         
         for column, label in self._sav_labels:
-            # Check if this column is a party-specific question
-            if name1 in column or name2 in column:
+            # Lowercase for comparison 
+            col_lower = column.lower()
+            label_lower = label.lower()
+            
+            # Check if this column is a party-specific question (stops at first match)
+            if name1.lower() in col_lower or name2.lower() in col_lower:
                 break
             
-            if column in metadata_fields:
+            # Check if column name matches metadata patterns
+            if col_lower in metadata_columns:
+                continue
+            
+            # Check if label contains text input patterns
+            skip = False
+            for pattern in text_input_patterns:
+                if pattern in label_lower:
+                    skip = True
+                    break
+            
+            if skip:
                 continue
             
             # Add to general questions

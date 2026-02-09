@@ -1,51 +1,53 @@
-"""SAV file processing UI component"""
+"""SAV file processing UI component - UPDATED for refactored architecture"""
 import streamlit as st
-import pyreadstat
-import tempfile
-import os
-from src.backend.sav.spss_syntax import RecodeResult, SPSSSyntaxGenerator
+from src.backend.sav.spss_syntax import SPSSSyntaxGenerator, RecodeResult
 
 
 def render_sav_processor():
     """
     Render the SAV file processor component.
     
-    Handles SAV file upload, processing, and results display.
+    Handles SAV file processing and results display.
+    Uses data already loaded in session state.
     """
     st.subheader("📊 SPSS Syntax Generator")
     
-    # SAV file uploader
-    sav_file = st.file_uploader("Upload SAV/SPSS file", type="sav", key="sav")
+    # Check if everything is ready
+    if not _has_extracted_statements():
+        st.warning("⚠️ Please extract Q4 arguments first")
+        return
     
-    if sav_file is not None:
-        _process_sav_file(sav_file)
+    if 'sav_data' not in st.session_state or st.session_state.sav_data is None:
+        st.warning("⚠️ Please upload SAV file first")
+        return
+    
+    # Generate syntax from already loaded data
+    _generate_and_display_syntax()
 
 
+def _has_extracted_statements() -> bool:
+    """Check if statements have been extracted from Q4 PDF"""
+    return (st.session_state.name1_highlights is not None and 
+            st.session_state.name2_highlights is not None)
 
-def _process_sav_file(sav_file):
+
+def _generate_and_display_syntax():
     """
-    Process the uploaded SAV file and generate SPSS syntax.
-    
-    Args:
-        sav_file: Uploaded SAV file
+    Generate SPSS syntax from session state data.
     """
-    # Save to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.sav') as tmp_file:
-        tmp_file.write(sav_file.read())
-        tmp_path = tmp_file.name
-    
     try:
-        # Read SAV file
-        df, meta = pyreadstat.read_sav(tmp_path)
+        # Get SAV data from session state
+        sav_data = st.session_state.sav_data
         
-        # Create SPSS syntax generator and generate script
-        sav_handler = SPSSSyntaxGenerator(
-            list(meta.column_names_to_labels.items()),
-            st.session_state.name1,
-            st.session_state.name2
+        # Create syntax generator with the NEW refactored class
+        syntax_generator = SPSSSyntaxGenerator(
+            sav_labels=sav_data['sav_labels'],
+            name1=st.session_state.name1,
+            name2=st.session_state.name2
         )
         
-        result: RecodeResult = sav_handler.generate_recode_script(
+        # Generate script
+        result: RecodeResult = syntax_generator.generate_recode_script(
             name1_questions=st.session_state.name1_highlights,
             name2_questions=st.session_state.name2_highlights,
             recode_settings=st.session_state.recode_settings
@@ -54,9 +56,9 @@ def _process_sav_file(sav_file):
         # Display results
         _display_results(result)
         
-    finally:
-        # Clean up temporary file
-        os.unlink(tmp_path)
+    except Exception as e:
+        st.error(f"❌ Error generating syntax: {str(e)}")
+        st.exception(e)
 
 
 def _display_results(result: RecodeResult):
