@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from .PDF_abstract import PDFProcessor
 import tempfile
 import os
-import pythoncom
+//import pythoncom
 class PDFHandler1(PDFProcessor):
     """Handles PDF processing operations"""
     
