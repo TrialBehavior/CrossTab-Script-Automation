@@ -4,4 +4,3 @@ pymupdf
 docx2pdf
 pyreadstat
 gunicorn
-pywin32
