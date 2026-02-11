@@ -107,9 +107,9 @@ class SPSSSyntaxGenerator(SPSSMatchProcessor):
                 f"recode {column} "
                 f"({range1}={settings['range1_becomes']}) "
                 f"({range2}={settings['range2_becomes']}) "
-                f"into {column}.r\n"
-                f"variable labels {column}r '{question}'.\n"
-                f"value labels {column}r 1 '{self._name1}' 2 '{self._name2}'.\n"
+                f"into {column}.r.\n"
+                f"variable labels {column}.r '{question}'.\n"
+                f"value labels {column}.r 1 '{self._name1}' 2 '{self._name2}'.\n"
                 f"execute.\n\n"
             )
         else:
@@ -118,9 +118,9 @@ class SPSSSyntaxGenerator(SPSSMatchProcessor):
                 f"recode {column} "
                 f"({settings['range1_start']} thru {settings['range1_end']}={settings['range1_becomes']}) "
                 f"({settings['range2_start']} thru {settings['range2_end']}={settings['range2_becomes']}) "
-                f"into {column}.r\n"
-                f"variable labels {column}r '{question}'.\n"
-                f"value labels {column}r 1 '{self._name1}' 2 '{self._name2}'.\n"
+                f"into {column}.r.\n"
+                f"variable labels {column}.r. '{question}'.\n"
+                f"value labels {column}.r 1 '{self._name1}' 2 '{self._name2}'.\n"
                 f"execute.\n\n"
             )
 

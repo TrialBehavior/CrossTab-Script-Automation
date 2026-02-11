@@ -19,7 +19,7 @@ class SPSSProcessor(ABC):
     """
     @staticmethod
     @abstractmethod
-    def get_essentials_from_sav(sav_file, name1: str, name2: str) -> dict:
+    def get_essentials_from_sav(sav_file, name1: str="Plaintiff", name2: str="Defense") -> dict:
         """
         Extract essential data from SAV file for SPSS processing.
         

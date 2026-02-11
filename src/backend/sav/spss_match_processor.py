@@ -106,6 +106,7 @@ class SPSSMatchProcessor(SPSSProcessor):
             
         Returns:
             List of tuples (column_name, label)
+            example: [("Q1", "How satisfied are you?"), ("Q2", "Please enter your age")]
         """
         general_questions = []
         
