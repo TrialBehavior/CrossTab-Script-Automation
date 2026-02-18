@@ -145,6 +145,8 @@ class SPSSMatchProcessor(SPSSProcessor):
         }
         
         for column, label in self._sav_labels:
+            if label is None:
+                break
             # Lowercase for comparison 
             col_lower = column.lower()
             label_lower = label.lower()

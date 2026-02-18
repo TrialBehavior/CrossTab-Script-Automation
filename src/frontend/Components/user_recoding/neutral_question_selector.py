@@ -1,5 +1,6 @@
 """Neutral question selector component"""
 import streamlit as st
+import pandas as pd
 from src.frontend.Components.user_recoding.recode_prepping import (
     _get_value_range,
     _create_recode_config
@@ -272,7 +273,6 @@ def _render_neutral_question_selector():
     columns = [column for column, label in st.session_state.sav_data['sav_labels']]
     labels = [label for column, label in st.session_state.sav_data['sav_labels']]
     
-    import pandas as pd
     df_labels = pd.DataFrame({"Column": columns, "Label": labels})
     
     # Search input

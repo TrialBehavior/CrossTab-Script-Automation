@@ -30,32 +30,20 @@ class SPSSSyntaxGenerator(SPSSMatchProcessor):
         super().__init__(sav_labels, name1, name2)
         self._script = ""
     
-    def generate_recode_script(
-        self,
-        name1_questions: list[str],
-        name2_questions: list[str],
-        recode_settings: dict[str, dict[str, int]]
-    ) -> RecodeResult:
-        """
-        Generate SPSS syntax to recode questions based on their labels.
-        Uses per-question recode settings with customizable ranges.
-        
-        Args:
-            name1_questions: List of first party question texts
-            name2_questions: List of second party question texts
-            recode_settings: Dictionary mapping questions to their recode settings
-            
-        Returns:
-            RecodeResult with script, matched questions, and unmatched questions
-        """
-        # Reset results
+    def generate_recode_script(self,name1_questions: list[str],name2_questions: list[str],recode_settings: dict[str, dict[str, int]]) -> RecodeResult:
         self._script = ""
         self.reset_tracking()
-        
-        # Process both question sets
+
         self._process_questions(name1_questions, self._name1, recode_settings)
         self._process_questions(name2_questions, self._name2, recode_settings)
-        
+
+        # Process neutral questions directly from recode_settings
+        neutral_questions = [
+            label for label, settings in recode_settings.items()
+            if settings.get('party') == 'neutral'
+        ]
+        self._process_questions(neutral_questions, 'Neutral', recode_settings)
+
         return RecodeResult(
             script=self._script,
             matched=self._matched,
@@ -119,7 +107,7 @@ class SPSSSyntaxGenerator(SPSSMatchProcessor):
                 f"({settings['range1_start']} thru {settings['range1_end']}={settings['range1_becomes']}) "
                 f"({settings['range2_start']} thru {settings['range2_end']}={settings['range2_becomes']}) "
                 f"into {column}.r.\n"
-                f"variable labels {column}.r. '{question}'.\n"
+                f"variable labels {column}.r '{question}'.\n"
                 f"value labels {column}.r 1 '{self._name1}' 2 '{self._name2}'.\n"
                 f"execute.\n\n"
             )

@@ -35,6 +35,7 @@ def render_name_input():
         st.session_state.name1 = name1_input
         st.session_state.name2 = name2_input
         st.session_state.getName_touched = True
+        st.session_state.skip = False
         st.success(f"✅ Party names set: **{name1_input}** vs **{name2_input}**")
         st.rerun()
     

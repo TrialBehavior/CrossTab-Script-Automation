@@ -32,7 +32,8 @@ if 'all_questions' not in st.session_state:
     st.session_state.all_questions = {}
 if 'selected_neutral_questions' not in st.session_state:
     st.session_state.selected_neutral_questions = {}
-
+if 'pdf_file_id' not in st.session_state:
+    st.session_state.pdf_file_id = None
 if 'recode_settings' not in st.session_state:
     st.session_state.recode_settings = {}
 if 'pdf_data' not in st.session_state:
@@ -45,28 +46,37 @@ if 'name2' not in st.session_state:
     st.session_state.name2 = "Defense"
 if 'getName_touched' not in st.session_state:
     st.session_state.getName_touched = False
-
 if 'button' not in st.session_state:
     st.session_state.button = {
         'ready_to_syntax': False
     }
 
-# Component 1: Get Name
+if 'skip' not in st.session_state:
+    st.session_state.skip = False
+print("--------------------------------------------------------------------")
+print(st.session_state.skip)
+# Component 1: Get Name of Name1 and Name2
 render_name_input()
+
 st.divider()
 
 # Component 2: Get PDF / DOC
 if st.session_state.getName_touched:
     render_get_pdf()
+    print("PDF function")
 
 # Component 3: Get SAV file and extract labels
 if (st.session_state.pdf_data is not None and st.session_state.name1 is not None and st.session_state.name2 is not None):
     render_get_sav()
+    print("SAV function")
 
+print(st.session_state.skip)
 # Component 3.5: pdf_extractor and populate all question database
-if st.session_state.sav_data is not None:
+if st.session_state.sav_data is not None and st.session_state.skip == False:
     st.divider()
     _render_recode_prepping(io.BytesIO(st.session_state.pdf_data))
+    st.session_state.skip = True
+    print("PDF Extractor function")
 
 # Component 4: Recode For Plaintiff, Defense, and Neutral
 if st.session_state.name1_highlights and st.session_state.name2_highlights:
@@ -74,6 +84,7 @@ if st.session_state.name1_highlights and st.session_state.name2_highlights:
     _render_recode_configurator()
     _render_neutral_question_selector()
     _render_syntax_extract_button()
+    print("Recode configurator and neutral question selector function")
 
 # Component 5: Generate SPSS Recode Syntax
 if st.session_state.button['ready_to_syntax']:
@@ -83,3 +94,4 @@ if st.session_state.button['ready_to_syntax']:
     st.divider()
     st.subheader("Generating SPSS Recode Syntax...")
     render_sav_processor()
+    print("SPSS syntax generation function")
