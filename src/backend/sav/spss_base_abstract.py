@@ -90,7 +90,7 @@ class SPSSProcessor(ABC):
         pass
     @abstractmethod
     def get_all_general_questions(self,name1: str = "Plaaffs",name2:str = "Defaffs") -> list [tuple[str,str]]:
-        "get a list of all of the questions not part of the Plaaffs or Defaffs"
+        "get a list of all of the questions "
         pass
     def get_matched_questions(self) -> list[tuple[str, str]]:
         """

@@ -1,6 +1,11 @@
 """Recode settings configuration component"""
 import streamlit as st
 
+
+def _mark_touched(key: str):
+    """Mark an expander as touched so it stays open after a rerun."""
+    st.session_state[key] = True
+
 def _render_recode_configurator():
     """
     Render the recode settings configuration UI.
@@ -22,13 +27,24 @@ def _render_recode_configurator():
             _render_statement_config(statement, i, st.session_state.name2, "d")
 
 
-# In plaintiff_defense_recode.py, update _render_statement_config
-
 def _render_statement_config(statement: str, index: int, category: str, prefix: str):
     """
     Render configuration UI for a single statement.
     """
-    with st.expander(f"{category} {index}: {statement[:60]}..."):
+    # touched_key is ONLY set to True via on_change callbacks below,
+    # meaning the user actually changed a value. This is the only reliable
+    # way to know the expander was opened — Streamlit registers widget keys
+    # in session_state even for collapsed expanders, so key existence alone
+    # is not a valid signal.
+    touched_key = f"expander_touched_{prefix}_{index}"
+    if touched_key not in st.session_state:
+        st.session_state[touched_key] = False
+
+    with st.expander(
+        f"{category} {index}: {statement[:60]}...",
+        expanded=st.session_state[touched_key]
+    ):
+
         st.write(f"**Full statement:** {statement}")
         st.divider()
         
@@ -57,7 +73,9 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
                 min_value=1,
                 max_value=100,
                 value=r1_start_val,
-                key=f"{prefix}_r1_start_{index}"
+                key=f"{prefix}_r1_start_{index}",
+                on_change=_mark_touched,
+                args=(touched_key,)
             )
             st.session_state.recode_settings[statement]['range1_start'] = r1_start
             
@@ -67,27 +85,22 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
                 min_value=1,
                 max_value=100,
                 value=r1_end_val,
-                key=f"{prefix}_r1_end_{index}"
+                key=f"{prefix}_r1_end_{index}",
+                on_change=_mark_touched,
+                args=(touched_key,)
             )
             st.session_state.recode_settings[statement]['range1_end'] = r1_end
             
         with col3:
-            if is_neutral:
-                r1_becomes = st.selectbox(
-                    "Becomes",
-                    options=[st.session_state.name1, st.session_state.name2],
-                    index=0 if settings['range1_becomes'] == 1 else 1,
-                    key=f"{prefix}_r1_becomes_{index}"
-                )
-                st.session_state.recode_settings[statement]['range1_becomes'] = 1 if r1_becomes == st.session_state.name1 else 2
-            else:
-                r1_becomes = st.selectbox(
-                    "Becomes",
-                    options=[1, 2],
-                    index=0 if settings['range1_becomes'] == 1 else 1,
-                    key=f"{prefix}_r1_becomes_{index}"
-                )
-                st.session_state.recode_settings[statement]['range1_becomes'] = r1_becomes
+            r1_becomes = st.selectbox(
+                "Becomes",
+                options=[st.session_state.name1, st.session_state.name2],
+                index=0 if settings['range1_becomes'] == 1 else 1,
+                key=f"{prefix}_r1_becomes_{index}",
+                on_change=_mark_touched,
+                args=(touched_key,)
+            )
+            st.session_state.recode_settings[statement]['range1_becomes'] = 1 if r1_becomes == st.session_state.name1 else 2
 
         # Second range
         st.write("**Second Range:**")
@@ -98,7 +111,9 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
                 min_value=1,
                 max_value=100,
                 value=r2_start_val,
-                key=f"{prefix}_r2_start_{index}"
+                key=f"{prefix}_r2_start_{index}",
+                on_change=_mark_touched,
+                args=(touched_key,)
             )
             st.session_state.recode_settings[statement]['range2_start'] = r2_start
             
@@ -108,27 +123,22 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
                 min_value=1,
                 max_value=100,
                 value=r2_end_val,
-                key=f"{prefix}_r2_end_{index}"
+                key=f"{prefix}_r2_end_{index}",
+                on_change=_mark_touched,
+                args=(touched_key,)
             )
             st.session_state.recode_settings[statement]['range2_end'] = r2_end
             
         with col6:
-            if is_neutral:
-                r2_becomes = st.selectbox(
-                    "Becomes",
-                    options=[st.session_state.name1, st.session_state.name2],
-                    index=0 if settings['range2_becomes'] == 1 else 1,
-                    key=f"{prefix}_r2_becomes_{index}"
-                )
-                st.session_state.recode_settings[statement]['range2_becomes'] = 1 if r2_becomes == st.session_state.name1 else 2
-            else:
-                r2_becomes = st.selectbox(
-                    "Becomes",
-                    options=[1, 2],
-                    index=0 if settings['range2_becomes'] == 1 else 1,
-                    key=f"{prefix}_r2_becomes_{index}"
-                )
-                st.session_state.recode_settings[statement]['range2_becomes'] = r2_becomes
+            r2_becomes = st.selectbox(
+                "Becomes",
+                options=[st.session_state.name1, st.session_state.name2],
+                index=0 if settings['range2_becomes'] == 1 else 1,
+                key=f"{prefix}_r2_becomes_{index}",
+                on_change=_mark_touched,
+                args=(touched_key,)
+            )
+            st.session_state.recode_settings[statement]['range2_becomes'] = 1 if r2_becomes == st.session_state.name1 else 2
         
         # Mark as changed if it's a neutral question and values changed
         if is_neutral:
@@ -153,16 +163,9 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
                     elif is_unchanged and statement in st.session_state.changed_neutral:
                         st.session_state.changed_neutral.remove(statement)
         
-        # Show preview with appropriate labels
-        if is_neutral:
-            becomes1_label = st.session_state.name1 if settings['range1_becomes'] == 1 else st.session_state.name2
-            becomes2_label = st.session_state.name1 if settings['range2_becomes'] == 1 else st.session_state.name2
-            st.code(
-                f"recode ({r1_start} thru {r1_end}={becomes1_label}) ({r2_start} thru {r2_end}={becomes2_label})", 
-                language="sql"
-            )
-        else:
-            st.code(
-                f"recode ({r1_start} thru {r1_end}={settings['range1_becomes']}) ({r2_start} thru {r2_end}={settings['range2_becomes']})", 
-                language="sql"
-            )
+        becomes1_label = settings['range1_becomes']
+        becomes2_label = settings['range2_becomes']
+        st.code(
+            f"recode ({r1_start} thru {r1_end}={becomes1_label}) ({r2_start} thru {r2_end}={becomes2_label})",
+            language="sql"
+        )

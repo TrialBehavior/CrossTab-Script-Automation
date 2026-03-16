@@ -47,11 +47,11 @@ def _render_continuous_config(label: str, settings: dict):
     with col3:
         becomes1 = st.selectbox(
             "Becomes",
-            options=[1, 2],
+            options=[st.session_state.name1, st.session_state.name2],
             index=0 if settings['range1_becomes'] == 1 else 1,
             key=f"neutral_r1_becomes_{label}"
         )
-        settings['range1_becomes'] = becomes1
+        settings['range1_becomes'] = 1 if becomes1 == st.session_state.name1 else 2
     
     # Second range
     st.write("**Second Range:**")
@@ -77,11 +77,11 @@ def _render_continuous_config(label: str, settings: dict):
     with col6:
         becomes2 = st.selectbox(
             "Becomes",
-            options=[1, 2],
+            options=[st.session_state.name1, st.session_state.name2],
             index=0 if settings['range2_becomes'] == 1 else 1,
             key=f"neutral_r2_becomes_{label}"
         )
-        settings['range2_becomes'] = becomes2
+        settings['range2_becomes'] = 1 if becomes2 == st.session_state.name1 else 2
     
     # Show preview
     st.code(
@@ -131,11 +131,11 @@ def _render_categorical_config(label: str, settings: dict):
         with col2:
             r1_becomes = st.selectbox(
                 "Becomes",
-                options=[1, 2],
+                options=[st.session_state.name1, st.session_state.name2],
                 index=0 if settings['range1_becomes'] == 1 else 1,
                 key=f"neutral_r1_becomes_{label}"
             )
-            settings['range1_becomes'] = r1_becomes
+            settings['range1_becomes'] = 1 if r1_becomes == st.session_state.name1 else 2
 
         # Second range
         st.write("**Second Range:**")
@@ -157,15 +157,15 @@ def _render_categorical_config(label: str, settings: dict):
         with col4:
             r2_becomes = st.selectbox(
                 "Becomes",
-                options=[1, 2],
+                options=[st.session_state.name1, st.session_state.name2],
                 index=0 if settings['range2_becomes'] == 1 else 1,
                 key=f"neutral_r2_becomes_{label}"
             )
-            settings['range2_becomes'] = r2_becomes
+            settings['range2_becomes'] = 1 if r2_becomes == st.session_state.name1 else 2
         
         # Show preview
         st.code(
-            f"recode ({settings['range1_start']}={r1_becomes}) ({settings['range2_start']}={r2_becomes})", 
+            f"recode ({settings['range1_start']}={settings['range1_becomes']}) ({settings['range2_start']}={settings['range2_becomes']})", 
             language="sql"
         )
         
@@ -204,11 +204,11 @@ def _render_categorical_config(label: str, settings: dict):
         with col3:
             r1_becomes = st.selectbox(
                 "Becomes",
-                options=[1, 2],
+                options=[st.session_state.name1, st.session_state.name2],
                 index=0 if settings['range1_becomes'] == 1 else 1,
                 key=f"neutral_r1_becomes_{label}"
             )
-            settings['range1_becomes'] = r1_becomes
+            settings['range1_becomes'] = 1 if r1_becomes == st.session_state.name1 else 2
 
         # Second range
         st.write("**Second Range:**")
@@ -242,11 +242,11 @@ def _render_categorical_config(label: str, settings: dict):
         with col6:
             r2_becomes = st.selectbox(
                 "Becomes",
-                options=[1, 2],
+                options=[st.session_state.name1, st.session_state.name2],
                 index=0 if settings['range2_becomes'] == 1 else 1,
                 key=f"neutral_r2_becomes_{label}"
             )
-            settings['range2_becomes'] = r2_becomes
+            settings['range2_becomes'] = 1 if r2_becomes == st.session_state.name1 else 2
         
         # Show preview
         st.code(
@@ -308,15 +308,15 @@ def _render_neutral_question_selector():
                     include_label=True,
                     label=row['Label']
                 )
+                st.rerun()
             elif not checkbox and is_selected:
                 # Only remove if it's a neutral question
                 if st.session_state.recode_settings[row['Label']].get('party') == 'neutral':
                     del st.session_state.recode_settings[row['Label']]
+                    st.rerun()
             
             # If checked, show configuration block immediately below
             if checkbox and row['Label'] in st.session_state.recode_settings:
                 settings = st.session_state.recode_settings[row['Label']]
                 if settings.get('party') == 'neutral':  # Only show config for neutral questions
                     _render_neutral_question_config(row['Label'], settings)
-
-

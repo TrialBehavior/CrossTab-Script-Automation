@@ -1,12 +1,14 @@
 import streamlit as st
 from src.frontend.Components.user_recoding.recode_prepping import _render_recode_prepping
 from src.frontend.Components.user_recoding.plaintiff_defense_recode import _render_recode_configurator
-from src.frontend.Components.sav_processor import render_sav_processor
+from src.frontend.Components.Outputs.sav_processor import render_sav_processor
 from src.frontend.Components.info.getName import render_name_input
 from src.frontend.Components.info.getPdf import render_get_pdf
 from src.frontend.Components.info.getSav import render_get_sav
 from src.frontend.Components.buttons._buttons import _render_syntax_extract_button
 from src.frontend.Components.user_recoding.neutral_question_selector import _render_neutral_question_selector
+from src.frontend.Components.Outputs.correlation_excel import render_correlation_exporter
+from src.frontend.Components.saved_questions_sidebar import render_saved_questions_sidebar, process_pending_sidebar_deletions
 import io
 
 # Page configuration
@@ -50,9 +52,15 @@ if 'button' not in st.session_state:
     st.session_state.button = {
         'ready_to_syntax': False
     }
-
 if 'skip' not in st.session_state:
     st.session_state.skip = False
+if '_sidebar_pending_delete' not in st.session_state:
+    st.session_state._sidebar_pending_delete = None
+
+# Apply any pending sidebar deletions BEFORE anything renders
+process_pending_sidebar_deletions()
+
+render_saved_questions_sidebar()
 print("--------------------------------------------------------------------")
 print(st.session_state.skip)
 # Component 1: Get Name of Name1 and Name2
@@ -64,9 +72,6 @@ st.divider()
 if st.session_state.getName_touched:
     render_get_pdf()
     print("PDF function")
-
-# Component 3: Get SAV file and extract labels
-if (st.session_state.pdf_data is not None and st.session_state.name1 is not None and st.session_state.name2 is not None):
     render_get_sav()
     print("SAV function")
 
@@ -95,3 +100,5 @@ if st.session_state.button['ready_to_syntax']:
     st.subheader("Generating SPSS Recode Syntax...")
     render_sav_processor()
     print("SPSS syntax generation function")
+    st.subheader("Excel")
+    render_correlation_exporter()

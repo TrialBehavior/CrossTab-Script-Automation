@@ -96,7 +96,7 @@ class SPSSMatchProcessor(SPSSProcessor):
                 self._unmatched.append((self._name2, question))
         
         return self.get_result()
-    def get_all_general_questions(self, name1: str = "Plaaffs", name2: str = "Defaffs") -> list[tuple[str, str]]:
+    def get_all_general_questions(self) -> list[tuple[str, str]]:
         """
         Get all general questions (questions before party-specific questions).
         
@@ -150,11 +150,6 @@ class SPSSMatchProcessor(SPSSProcessor):
             # Lowercase for comparison 
             col_lower = column.lower()
             label_lower = label.lower()
-            
-            # Check if this column is a party-specific question (stops at first match)
-            if name1.lower() in col_lower or name2.lower() in col_lower:
-                break
-            
             # Check if column name matches metadata patterns
             if col_lower in metadata_columns:
                 continue
