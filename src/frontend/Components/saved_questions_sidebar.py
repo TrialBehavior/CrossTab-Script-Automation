@@ -7,30 +7,35 @@ import streamlit as st
 
 
 def process_pending_sidebar_deletions():
-    """
-    Apply any pending sidebar deletions before the app renders.
-    Call this at the very top of main.py, before render_saved_questions_sidebar().
-    """
     if st.session_state.get('_sidebar_pending_delete'):
         label = st.session_state._sidebar_pending_delete
+        print(f"[SIDEBAR DELETE] Attempting to delete: ")
+
         if label in st.session_state.get('recode_settings', {}):
+            settings = st.session_state.recode_settings[label]
+            col = settings.get('matched_column') or settings.get('column')
+
             del st.session_state.recode_settings[label]
+
+            if col:
+                # Explicitly set checkbox to False so when it renders on the
+                # next rerun it doesn't re-add the question back
+                st.session_state[f"neutral_checkbox_{col}"] = False
+        else:
+            print(f"[SIDEBAR DELETE] Label not found in recode_settings!")
+
         if label in st.session_state.get('all_questions', {}):
             st.session_state.all_questions[label]['selected'] = False
+
         st.session_state._sidebar_pending_delete = None
 
 
 def render_saved_questions_sidebar():
-    """
-    Render a persistent sidebar panel listing all saved neutral questions.
-    Each entry has an X button to remove it from recode_settings.
-    """
     with st.sidebar:
         st.subheader("🗂️ Saved Neutral Questions")
 
         recode_settings = st.session_state.get('recode_settings', {})
 
-        # Filter to only neutral questions
         neutral_questions = [
             label for label, settings in recode_settings.items()
             if settings.get('party') == 'neutral'
@@ -52,7 +57,7 @@ def render_saved_questions_sidebar():
 
             with col2:
                 if st.button("✕", key=f"sidebar_remove_{label}", help="Remove question", type="tertiary"):
-                    # Stage the deletion — it will be applied at the top of the next rerun
+                    print(f"[SIDEBAR] X pressed for: ")
                     st.session_state._sidebar_pending_delete = label
                     st.rerun()
 

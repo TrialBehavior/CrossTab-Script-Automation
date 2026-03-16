@@ -296,8 +296,9 @@ def _render_neutral_question_selector():
             )
             
             # Add or remove from recode_settings based on checkbox state
+            print(f"[SELECTOR] label=")
             if checkbox and not is_selected:
-                # Create recode config for this question
+                print(f"[SELECTOR] >>> RE-ADDING — bug if this fires after sidebar delete!")
                 values = _get_value_range(row['Column'])
                 st.session_state.recode_settings[row['Label']] = _create_recode_config(
                     party='neutral',
@@ -310,7 +311,7 @@ def _render_neutral_question_selector():
                 )
                 st.rerun()
             elif not checkbox and is_selected:
-                # Only remove if it's a neutral question
+                print(f"[SELECTOR] Removing  via checkbox uncheck")
                 if st.session_state.recode_settings[row['Label']].get('party') == 'neutral':
                     del st.session_state.recode_settings[row['Label']]
                     st.rerun()
