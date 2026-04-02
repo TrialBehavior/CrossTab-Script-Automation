@@ -14,15 +14,14 @@ class SPSSMatchProcessor(SPSSProcessor):
     """
     
     def _build_label_mapping(self) -> dict[str, str]:
-        """
-        Build mapping from labels to column names.
-        
-        Returns:
-            Dictionary mapping label to column name
-        """
         mapping: dict[str, str] = {}
         for column, label in self._sav_labels:
-            mapping[label] = column
+            if label not in mapping:
+                mapping[label] = column
+            elif not column.lower().endswith('.r'):
+                # overwrite only if current entry is .r and new one isn't
+                if mapping[label].lower().endswith('.r'):
+                    mapping[label] = column
         return mapping
     
     def _normalize_text(self, text: str) -> str:
@@ -41,22 +40,15 @@ class SPSSMatchProcessor(SPSSProcessor):
         return text.strip()
     
     def _find_column(self, question: str) -> str | None:
-        """
-        Find column by exact match or partial match.
-        
-        Args:
-            question: The question text to search for
-            
-        Returns:
-            Column name if found, None otherwise
-        """
-        # Try exact match first
         if question in self._label_to_column:
-            return self._label_to_column[question]
+            col = self._label_to_column[question]
+            if not col.lower().endswith('.r'):
+                return col
         
-        # Try partial match
         normalized_question = self._normalize_text(question)
         for label, column in self._label_to_column.items():
+            if column.lower().endswith('.r'):
+                continue  # skip already-recoded columns
             if normalized_question in self._normalize_text(label):
                 return column
         
@@ -153,7 +145,10 @@ class SPSSMatchProcessor(SPSSProcessor):
             # Check if column name matches metadata patterns
             if col_lower in metadata_columns:
                 continue
-            
+            # Skip already-recoded columns
+            if col_lower.endswith('.r'):
+                continue
+                        
             # Check if label contains text input patterns
             skip = False
             for pattern in text_input_patterns:
@@ -204,6 +199,8 @@ class SPSSMatchProcessor(SPSSProcessor):
         sav_labels = []
         for col in df.columns:
             label = meta.column_names_to_labels.get(col, col)
+            if 'Q127_8' in col:
+                print(f"  {col!r} -> {label!r}")
             sav_labels.append((col, label))
         
         return {
