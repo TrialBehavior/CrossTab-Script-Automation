@@ -1,5 +1,6 @@
 import streamlit as st
 import io
+import math
 from src.backend.file_extract.PDF_implementation import PDFHandler1
 from src.backend.sav.spss_match_processor import SPSSMatchProcessor
 
@@ -9,7 +10,6 @@ def _render_recode_prepping(Q4_file):
     pdf_handler = PDFHandler1()
     Q4_file.seek(0)
     
-    # Find pages with name1 and name2 arguments
     name2_pages = pdf_handler.find_pages_with_text(Q4_file, f"{st.session_state.name2} Arguments")
     Q4_file.seek(0)
     name1_pages = pdf_handler.find_pages_with_text(Q4_file, f"{st.session_state.name1} Arguments")
@@ -17,7 +17,6 @@ def _render_recode_prepping(Q4_file):
     st.write(f"{st.session_state.name2} Arguments found on pages: {[p+1 for p in name2_pages]}")
     st.write(f"{st.session_state.name1} Arguments found on pages: {[p+1 for p in name1_pages]}")
     
-    # Extract name2 highlights
     if name2_pages:
         Q4_file.seek(0)
         name2_pdf_bytes = pdf_handler.split_pdf_by_pages(Q4_file, name2_pages)
@@ -25,7 +24,6 @@ def _render_recode_prepping(Q4_file):
     else:
         st.warning("⚠️ No highlighted text found in name2 Arguments pages")
 
-    # Extract name1 highlights
     if name1_pages:
         Q4_file.seek(0)
         name1_pdf_bytes = pdf_handler.split_pdf_by_pages(Q4_file, name1_pages)
@@ -47,6 +45,77 @@ def _get_value_range(column_name):
         values = sorted(meta.variable_value_labels[column_name].keys())
         return values
     return None
+
+
+def _get_actual_values(column_name) -> list:
+    """Get the actual unique values respondents used for a column from the dataframe"""
+    df = st.session_state.sav_data['df']
+    if column_name not in df.columns:
+        return []
+    return sorted(df[column_name].dropna().unique().tolist())
+
+
+def _resolve_ranges(values: list, actual_values: list) -> tuple[int, int, int, int]:
+    """
+    Determine the best range1_start/end and range2_start/end given metadata
+    values and actual response values.
+
+    Logic:
+    1. Check if any actual responses fall within values[0]-values[3] (or values[0]-values[1])
+    2. If yes — use the metadata values as-is
+    3. If no — derive ranges from actual responses:
+       a. Fill any gaps in actual values to make contiguous
+       b. Split down the middle (range1 = min to mid, range2 = mid+1 to max)
+    """
+    if not actual_values:
+        # No data at all, fall back to metadata values
+        if len(values) >= 4:
+            return values[0], values[1], values[2], values[3]
+        else:
+            return values[0], values[0], values[1], values[1]
+
+    # Check if actual responses fall within the metadata-derived ranges
+    if len(values) >= 4:
+        range_min = values[0]
+        range_max = values[3]
+    else:
+        range_min = values[0]
+        range_max = values[1]
+
+    any_in_range = any(range_min <= v <= range_max for v in actual_values)
+
+    if any_in_range:
+        # Metadata ranges are valid — use them as-is
+        if len(values) >= 4:
+            return values[0], values[1], values[2], values[3]
+        else:
+            return values[0], values[0], values[1], values[1]
+
+    # Metadata ranges don't match actual responses — derive from actual values
+    min_val = int(min(actual_values))
+    max_val = int(max(actual_values))
+
+    # Fill gaps: build contiguous range from min to max
+    # e.g. actual=[1,3,4,5] -> contiguous=[1,2,3,4,5]
+    expected_count = max_val - min_val + 1
+    actual_set = set(int(v) for v in actual_values)
+
+    if len(actual_set) < expected_count:
+        # There are gaps — fill them in
+        contiguous = list(range(min_val, max_val + 1))
+    else:
+        contiguous = sorted(actual_set)
+
+    # Split down the middle
+    mid_idx = math.floor((len(contiguous) - 1) / 2)
+    mid_val = contiguous[mid_idx]
+
+    range1_start = contiguous[0]
+    range1_end = mid_val
+    range2_start = contiguous[mid_idx + 1] if mid_idx + 1 < len(contiguous) else mid_val
+    range2_end = contiguous[-1]
+
+    return range1_start, range1_end, range2_start, range2_end
 
 
 def _initialize_recode_settings():
@@ -71,13 +140,15 @@ def _initialize_plaintiff_recodes(processor: SPSSMatchProcessor):
         if statement not in st.session_state.recode_settings:
             matched_column = processor._find_column(statement)
             values = _get_value_range(matched_column) if matched_column else None
+            actual_values = _get_actual_values(matched_column) if matched_column else []
             
             st.session_state.recode_settings[statement] = _create_recode_config(
                 party='name1',
                 matched_column=matched_column,
                 values=values,
                 favorable_becomes=1,
-                unfavorable_becomes=2
+                unfavorable_becomes=2,
+                actual_values=actual_values
             )
 
 
@@ -90,13 +161,15 @@ def _initialize_defense_recodes(processor: SPSSMatchProcessor):
         if statement not in st.session_state.recode_settings:
             matched_column = processor._find_column(statement)
             values = _get_value_range(matched_column) if matched_column else None
+            actual_values = _get_actual_values(matched_column) if matched_column else []
             
             st.session_state.recode_settings[statement] = _create_recode_config(
                 party='name2',
                 matched_column=matched_column,
                 values=values,
                 favorable_becomes=2,
-                unfavorable_becomes=1
+                unfavorable_becomes=1,
+                actual_values=actual_values
             )
 
 
@@ -109,6 +182,7 @@ def _initialize_neutral_recodes(processor: SPSSMatchProcessor):
     
     for column, label in general_questions:
         values = _get_value_range(column)
+        actual_values = _get_actual_values(column)
         
         st.session_state.all_questions[label] = _create_recode_config(
             party='neutral',
@@ -117,7 +191,8 @@ def _initialize_neutral_recodes(processor: SPSSMatchProcessor):
             favorable_becomes=1,
             unfavorable_becomes=2,
             include_label=True,
-            label=label
+            label=label,
+            actual_values=actual_values
         )
 
 
@@ -128,9 +203,13 @@ def _create_recode_config(
     favorable_becomes: int,
     unfavorable_becomes: int,
     include_label: bool = False,
-    label: str = None
+    label: str = None,
+    actual_values: list = None
 ) -> dict:
     """Create a recode configuration dictionary"""
+    if actual_values is None:
+        actual_values = []
+
     is_continuous = (matched_column and values is None)
     
     config = {'party': party, 'matched_column': matched_column}
@@ -150,26 +229,28 @@ def _create_recode_config(
             'range2_becomes': unfavorable_becomes
         })
     elif values and len(values) >= 4:
+        r1s, r1e, r2s, r2e = _resolve_ranges(values, actual_values)
         config.update({
             'variable_type': 'categorical',
-            'range1_start': values[0],
-            'range1_end': values[1],
+            'range1_start': r1s,
+            'range1_end': r1e,
             'range1_becomes': favorable_becomes,
-            'range2_start': values[2],
-            'range2_end': values[3],
+            'range2_start': r2s,
+            'range2_end': r2e,
             'range2_becomes': unfavorable_becomes
         })
         if include_label:
             config['original_values'] = values
     elif values and len(values) >= 2 and include_label:
+        r1s, r1e, r2s, r2e = _resolve_ranges(values, actual_values)
         config.update({
             'variable_type': 'categorical',
             'original_values': values,
-            'range1_start': values[0],
-            'range1_end': values[0],
+            'range1_start': r1s,
+            'range1_end': r1e,
             'range1_becomes': favorable_becomes,
-            'range2_start': values[1],
-            'range2_end': values[1],
+            'range2_start': r2s,
+            'range2_end': r2e,
             'range2_becomes': unfavorable_becomes
         })
     else:
@@ -190,11 +271,13 @@ def update_recode_with_match(statement, matched_column):
     """Update recode settings once a statement is matched to a column"""
     if statement in st.session_state.recode_settings:
         values = _get_value_range(matched_column)
+        actual_values = _get_actual_values(matched_column)
         
         if values and len(values) >= 4:
+            r1s, r1e, r2s, r2e = _resolve_ranges(values, actual_values)
             settings = st.session_state.recode_settings[statement]
             settings['matched_column'] = matched_column
-            settings['range1_start'] = values[0]
-            settings['range1_end'] = values[1]
-            settings['range2_start'] = values[2]
-            settings['range2_end'] = values[3]
+            settings['range1_start'] = r1s
+            settings['range1_end'] = r1e
+            settings['range2_start'] = r2s
+            settings['range2_end'] = r2e
