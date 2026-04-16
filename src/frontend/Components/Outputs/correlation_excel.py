@@ -10,16 +10,15 @@ import streamlit as st
 def _convert_value(value, settings: dict):
     """
     Apply recode logic to a single value based on its settings.
-
-    Returns:
-        Recoded integer (1 or 2), or None if value doesn't match any range
+    Handles NaN/missing values via sysmis_becomes if set.
+    Returns recoded integer (1 or 2), or None if value doesn't match or becomes is None.
     """
-    if pd.isna(value):
-        return None
-
     variable_type = settings.get('variable_type', 'categorical')
+    sysmis_becomes = settings.get('sysmis_becomes')
 
-    # Can't recode unknown type — range fields are None
+    if pd.isna(value):
+        return sysmis_becomes  # None if not set, or 1/2 if user mapped it
+
     if variable_type == 'unknown':
         return None
 
@@ -28,85 +27,79 @@ def _convert_value(value, settings: dict):
         val1 = settings['range1_value']
         becomes1 = settings['range1_becomes']
 
-        if   op1 == '<'  and value <  val1: return becomes1
-        elif op1 == '<=' and value <= val1: return becomes1
-        elif op1 == '='  and value == val1: return becomes1
-        elif op1 == '>=' and value >= val1: return becomes1
-        elif op1 == '>'  and value >  val1: return becomes1
+        if becomes1 is not None:
+            if   op1 == '<'  and value <  val1: return becomes1
+            elif op1 == '<=' and value <= val1: return becomes1
+            elif op1 == '='  and value == val1: return becomes1
+            elif op1 == '>=' and value >= val1: return becomes1
+            elif op1 == '>'  and value >  val1: return becomes1
 
         op2 = settings['range2_operator']
         val2 = settings['range2_value']
         becomes2 = settings['range2_becomes']
 
-        if   op2 == '<'  and value <  val2: return becomes2
-        elif op2 == '<=' and value <= val2: return becomes2
-        elif op2 == '='  and value == val2: return becomes2
-        elif op2 == '>=' and value >= val2: return becomes2
-        elif op2 == '>'  and value >  val2: return becomes2
+        if becomes2 is not None:
+            if   op2 == '<'  and value <  val2: return becomes2
+            elif op2 == '<=' and value <= val2: return becomes2
+            elif op2 == '='  and value == val2: return becomes2
+            elif op2 == '>=' and value >= val2: return becomes2
+            elif op2 == '>'  and value >  val2: return becomes2
 
         return None
 
     else:
-        # Categorical — thru ranges
         r1_start = settings.get('range1_start')
         r1_end = settings.get('range1_end')
         r2_start = settings.get('range2_start')
         r2_end = settings.get('range2_end')
+        r1_becomes = settings.get('range1_becomes')
+        r2_becomes = settings.get('range2_becomes')
 
-        # Guard against None range values (unmatched questions)
-        if None in (r1_start, r1_end, r2_start, r2_end):
-            return None
+        if None not in (r1_start, r1_end) and r1_becomes is not None:
+            if r1_start <= value <= r1_end:
+                return r1_becomes
 
-        if r1_start <= value <= r1_end:
-            return settings['range1_becomes']
-        elif r2_start <= value <= r2_end:
-            return settings['range2_becomes']
+        if None not in (r2_start, r2_end) and r2_becomes is not None:
+            if r2_start <= value <= r2_end:
+                return r2_becomes
+
         return None
 
 
 def apply_recodes(df: pd.DataFrame, recode_settings: dict) -> tuple[pd.DataFrame, list[str]]:
     """
     Apply all recode settings to the dataframe, adding Recode: columns.
-
-    Returns:
-        Tuple of (recoded dataframe, list of skipped question labels)
+    Returns tuple of (recoded dataframe, list of skipped question labels).
     """
     df = df.copy()
     skipped = []
-    first = True
+
     for label, settings in recode_settings.items():
         column = settings.get('column') or settings.get('matched_column')
-        # Skip if no column was ever matched
+
         if not column:
             skipped.append(f"{label} (no SAV column matched)")
             continue
-
-        # Skip if column doesn't exist in dataframe
         if column not in df.columns:
             skipped.append(f"{label} (column '{column}' not found in SAV)")
             continue
-
-        # Skip unknown variable type
         if settings.get('variable_type') == 'unknown':
             skipped.append(f"{label} (variable type could not be determined)")
             continue
+        # Skip only if all three are None
+        if (settings.get('range1_becomes') is None and
+                settings.get('range2_becomes') is None and
+                settings.get('sysmis_becomes') is None):
+            skipped.append(f"{label} (all ranges set to None)")
+            continue
 
         df[f"Recode: {label}"] = df[column].apply(lambda x: _convert_value(x, settings))
-        if first:
-            print(f"variable_type: {settings.get('variable_type')}")
-            print(f"range1_start: {settings.get('range1_start')} range1_end: {settings.get('range1_end')}")
-            print(f"range2_start: {settings.get('range2_start')} range2_end: {settings.get('range2_end')}")
-            print(f"sample raw values: {df[column].dropna().head(30).tolist()}")
-            first = False
-        print(f"value_counts: {df[f'Recode: {label}'].value_counts().to_dict()}")
 
     return df, skipped
 
 
 def build_correlation_table(df: pd.DataFrame, recode_settings: dict) -> pd.DataFrame:
-    """
-    Build a correlation matrix from all recoded label columns, deduplicating first.
-    """
+    """Build a correlation matrix from all recoded label columns, deduplicating first."""
     label_cols = list(dict.fromkeys([
         f"Recode: {label}" for label in recode_settings.keys()
         if f"Recode: {label}" in df.columns
@@ -119,9 +112,7 @@ def build_correlation_table(df: pd.DataFrame, recode_settings: dict) -> pd.DataF
 
 
 def _write_styled_excel(corr_matrix: pd.DataFrame) -> io.BytesIO:
-    """
-    Write correlation matrix to a styled Excel buffer matching SPSS style.
-    """
+    """Write correlation matrix to a styled Excel buffer matching SPSS style."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
@@ -166,17 +157,9 @@ def _write_styled_excel(corr_matrix: pd.DataFrame) -> io.BytesIO:
         for col_idx, col_label in enumerate(labels, start=2):
             try:
                 val = corr_matrix.loc[label, col_label]
-                if row_idx == 2:
-                    print(f"col_idx={col_idx} val={val} isnan={pd.isna(val)}")
-            except Exception as e:
-                if row_idx == 2 and col_idx == 2:
-                    print(f"LOOKUP ERROR: {e}")
-                    print(f"index type: {type(corr_matrix.index[0])}")
-                    print(f"label type: {type(label)}")
-                    print(f"index len: {len(corr_matrix.index[0])}")
-                    print(f"label len: {len(label)}")
+            except Exception:
                 val = None
-            cell = ws.cell(row=row_idx, column=col_idx, value=round(val, 3) if val is not None else "")
+            cell = ws.cell(row=row_idx, column=col_idx, value=round(val, 3) if val is not None and not pd.isna(val) else "")
             cell.font = BLUE_FONT
             cell.fill = row_fill
             cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -212,7 +195,7 @@ def render_correlation_exporter():
     try:
         recoded_df, skipped = apply_recodes(df, recode_settings)
         corr_matrix = build_correlation_table(recoded_df, recode_settings)
-        print(repr(list(corr_matrix.columns)[:3]))
+
         if corr_matrix.empty:
             st.warning("⚠️ No recoded columns found to correlate.")
             return
@@ -228,7 +211,6 @@ def render_correlation_exporter():
             type="primary"
         )
 
-        # Surface any skipped questions so the user knows what's missing
         if skipped:
             with st.expander(f"⚠️ {len(skipped)} question(s) excluded from correlation table"):
                 for reason in skipped:

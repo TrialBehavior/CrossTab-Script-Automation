@@ -40,7 +40,6 @@ def _render_recode_prepping(Q4_file):
 def _get_value_range(column_name):
     """Extract the actual value range for a question from SAV metadata"""
     meta = st.session_state.sav_data['meta']
-    
     if column_name in meta.variable_value_labels:
         values = sorted(meta.variable_value_labels[column_name].keys())
         return values
@@ -68,13 +67,11 @@ def _resolve_ranges(values: list, actual_values: list) -> tuple[int, int, int, i
        b. Split down the middle (range1 = min to mid, range2 = mid+1 to max)
     """
     if not actual_values:
-        # No data at all, fall back to metadata values
         if len(values) >= 4:
             return values[0], values[1], values[2], values[3]
         else:
             return values[0], values[0], values[1], values[1]
 
-    # Check if actual responses fall within the metadata-derived ranges
     if len(values) >= 4:
         range_min = values[0]
         range_max = values[3]
@@ -85,28 +82,22 @@ def _resolve_ranges(values: list, actual_values: list) -> tuple[int, int, int, i
     any_in_range = any(range_min <= v <= range_max for v in actual_values)
 
     if any_in_range:
-        # Metadata ranges are valid — use them as-is
         if len(values) >= 4:
             return values[0], values[1], values[2], values[3]
         else:
             return values[0], values[0], values[1], values[1]
 
-    # Metadata ranges don't match actual responses — derive from actual values
     min_val = int(min(actual_values))
     max_val = int(max(actual_values))
 
-    # Fill gaps: build contiguous range from min to max
-    # e.g. actual=[1,3,4,5] -> contiguous=[1,2,3,4,5]
     expected_count = max_val - min_val + 1
     actual_set = set(int(v) for v in actual_values)
 
     if len(actual_set) < expected_count:
-        # There are gaps — fill them in
         contiguous = list(range(min_val, max_val + 1))
     else:
         contiguous = sorted(actual_set)
 
-    # Split down the middle
     mid_idx = math.floor((len(contiguous) - 1) / 2)
     mid_val = contiguous[mid_idx]
 
@@ -125,7 +116,6 @@ def _initialize_recode_settings():
         name1=st.session_state.name1,
         name2=st.session_state.name2
     )
-    
     _initialize_plaintiff_recodes(processor)
     _initialize_defense_recodes(processor)
     _initialize_neutral_recodes(processor)
@@ -135,13 +125,11 @@ def _initialize_plaintiff_recodes(processor: SPSSMatchProcessor):
     """Initialize recode settings for plaintiff (name1) statements"""
     if not st.session_state.name1_highlights:
         return
-    
     for statement in st.session_state.name1_highlights:
         if statement not in st.session_state.recode_settings:
             matched_column = processor._find_column(statement)
             values = _get_value_range(matched_column) if matched_column else None
             actual_values = _get_actual_values(matched_column) if matched_column else []
-            
             st.session_state.recode_settings[statement] = _create_recode_config(
                 party='name1',
                 matched_column=matched_column,
@@ -156,13 +144,11 @@ def _initialize_defense_recodes(processor: SPSSMatchProcessor):
     """Initialize recode settings for defense (name2) statements"""
     if not st.session_state.name2_highlights:
         return
-    
     for statement in st.session_state.name2_highlights:
         if statement not in st.session_state.recode_settings:
             matched_column = processor._find_column(statement)
             values = _get_value_range(matched_column) if matched_column else None
             actual_values = _get_actual_values(matched_column) if matched_column else []
-            
             st.session_state.recode_settings[statement] = _create_recode_config(
                 party='name2',
                 matched_column=matched_column,
@@ -179,11 +165,9 @@ def _initialize_neutral_recodes(processor: SPSSMatchProcessor):
     if not general_questions:
         print("⚠️ No general/neutral questions found in SAV file")
         return
-    
     for column, label in general_questions:
         values = _get_value_range(column)
         actual_values = _get_actual_values(column)
-        
         st.session_state.all_questions[label] = _create_recode_config(
             party='neutral',
             matched_column=column,
@@ -212,7 +196,11 @@ def _create_recode_config(
 
     is_continuous = (matched_column and values is None)
     
-    config = {'party': party, 'matched_column': matched_column}
+    config = {
+        'party': party,
+        'matched_column': matched_column,
+        'sysmis_becomes': None  # default: system missing stays missing
+    }
     
     if include_label:
         config['column'] = matched_column
@@ -272,7 +260,6 @@ def update_recode_with_match(statement, matched_column):
     if statement in st.session_state.recode_settings:
         values = _get_value_range(matched_column)
         actual_values = _get_actual_values(matched_column)
-        
         if values and len(values) >= 4:
             r1s, r1e, r2s, r2e = _resolve_ranges(values, actual_values)
             settings = st.session_state.recode_settings[statement]
