@@ -134,8 +134,8 @@ def _initialize_plaintiff_recodes(processor: SPSSMatchProcessor):
                 party='name1',
                 matched_column=matched_column,
                 values=values,
-                favorable_becomes=1,
-                unfavorable_becomes=2,
+                favorable_becomes=2,
+                unfavorable_becomes=1,
                 actual_values=actual_values
             )
 
@@ -153,8 +153,8 @@ def _initialize_defense_recodes(processor: SPSSMatchProcessor):
                 party='name2',
                 matched_column=matched_column,
                 values=values,
-                favorable_becomes=2,
-                unfavorable_becomes=1,
+                favorable_becomes=1,
+                unfavorable_becomes=2,
                 actual_values=actual_values
             )
 

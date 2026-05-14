@@ -94,6 +94,8 @@ def apply_recodes(df: pd.DataFrame, recode_settings: dict) -> tuple[pd.DataFrame
             continue
 
         df[f"Recode: {label}"] = df[column].apply(lambda x: _convert_value(x, settings))
+        print(f"value_counts: {df[f'Recode: {label}'].value_counts().to_dict()}")
+
 
     return df, skipped
 

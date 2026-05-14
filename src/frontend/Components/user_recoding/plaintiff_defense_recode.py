@@ -45,35 +45,91 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
     ):
         st.write(f"**Full statement:** {statement}")
         st.divider()
-        
+
         settings = st.session_state.recode_settings[statement]
-        is_neutral = settings.get('party') == 'neutral'
-        
+
         if 'changed_neutral' not in st.session_state:
             st.session_state.changed_neutral = []
-        
-        r1_start_val = int(settings['range1_start']) if settings['range1_start'] is not None else 1
-        r1_end_val = int(settings['range1_end']) if settings['range1_end'] is not None else 2
-        r2_start_val = int(settings['range2_start']) if settings['range2_start'] is not None else 3
-        r2_end_val = int(settings['range2_end']) if settings['range2_end'] is not None else 4
+        if 'sysmis_becomes' not in settings:
+            settings['sysmis_becomes'] = None
 
-        # First range
+        # Build display options from actual responses, remapped to metadata labels by position
+        matched_column = settings.get('matched_column')
+        display_values = []
+        display_labels = {}
+
+        if matched_column and st.session_state.sav_data:
+            meta = st.session_state.sav_data['meta']
+            df = st.session_state.sav_data['df']
+            value_labels = meta.variable_value_labels.get(matched_column, {})
+            original_values = sorted(value_labels.keys()) if value_labels else []
+
+            if matched_column in df.columns:
+                actual_responses = sorted(df[matched_column].dropna().unique().tolist())
+            else:
+                actual_responses = original_values
+
+            if actual_responses and original_values and len(actual_responses) <= len(original_values):
+                # Remap: actual response values get labels from metadata by position
+                # e.g. actual=[1,2,3,4], metadata=[7,8,9,10] → 1="Disagree Strongly"
+                display_values = actual_responses
+                display_labels = {
+                    actual_responses[i]: value_labels.get(original_values[i], str(actual_responses[i]))
+                    for i in range(len(actual_responses))
+                }
+            elif actual_responses:
+                display_values = actual_responses
+                display_labels = {v: value_labels.get(v, str(v)) for v in actual_responses}
+            else:
+                display_values = original_values
+                display_labels = {v: value_labels.get(v, str(v)) for v in original_values}
+
+        use_dropdowns = len(display_values) >= 2
+
+        def make_options():
+            return [(val, f"{val} - {display_labels.get(val, str(val))}") for val in display_values]
+
+        def val_to_idx(opts, target):
+            return next((i for i, (v, _) in enumerate(opts) if v == target), 0)
+
+        # ── First Range ──
         st.write("**First Range:**")
         col1, col2, col3 = st.columns(3)
-        with col1:
-            r1_start = st.number_input(
-                "Start", min_value=1, max_value=100, value=r1_start_val,
-                key=f"{prefix}_r1_start_{index}",
-                on_change=_mark_touched, args=(touched_key,)
-            )
-            settings['range1_start'] = r1_start
-        with col2:
-            r1_end = st.number_input(
-                "End", min_value=1, max_value=100, value=r1_end_val,
-                key=f"{prefix}_r1_end_{index}",
-                on_change=_mark_touched, args=(touched_key,)
-            )
-            settings['range1_end'] = r1_end
+
+        if use_dropdowns:
+            opts = make_options()
+            with col1:
+                r1_start_sel = st.selectbox(
+                    "Start", options=[lbl for _, lbl in opts],
+                    index=val_to_idx(opts, settings.get('range1_start', display_values[0])),
+                    key=f"{prefix}_r1_start_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+                settings['range1_start'] = opts[[lbl for _, lbl in opts].index(r1_start_sel)][0]
+            with col2:
+                r1_end_sel = st.selectbox(
+                    "End", options=[lbl for _, lbl in opts],
+                    index=val_to_idx(opts, settings.get('range1_end', display_values[0])),
+                    key=f"{prefix}_r1_end_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+                settings['range1_end'] = opts[[lbl for _, lbl in opts].index(r1_end_sel)][0]
+        else:
+            r1_start_val = int(settings['range1_start']) if settings['range1_start'] is not None else 1
+            r1_end_val = int(settings['range1_end']) if settings['range1_end'] is not None else 2
+            with col1:
+                settings['range1_start'] = st.number_input(
+                    "Start", min_value=1, max_value=100, value=r1_start_val,
+                    key=f"{prefix}_r1_start_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+            with col2:
+                settings['range1_end'] = st.number_input(
+                    "End", min_value=1, max_value=100, value=r1_end_val,
+                    key=f"{prefix}_r1_end_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+
         with col3:
             r1_becomes = st.selectbox(
                 "Becomes", options=BECOMES_OPTIONS(),
@@ -83,23 +139,44 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
             )
             settings['range1_becomes'] = _becomes_to_value(r1_becomes)
 
-        # Second range
+        # ── Second Range ──
         st.write("**Second Range:**")
         col4, col5, col6 = st.columns(3)
-        with col4:
-            r2_start = st.number_input(
-                "Start", min_value=1, max_value=100, value=r2_start_val,
-                key=f"{prefix}_r2_start_{index}",
-                on_change=_mark_touched, args=(touched_key,)
-            )
-            settings['range2_start'] = r2_start
-        with col5:
-            r2_end = st.number_input(
-                "End", min_value=1, max_value=100, value=r2_end_val,
-                key=f"{prefix}_r2_end_{index}",
-                on_change=_mark_touched, args=(touched_key,)
-            )
-            settings['range2_end'] = r2_end
+
+        if use_dropdowns:
+            opts = make_options()
+            with col4:
+                r2_start_sel = st.selectbox(
+                    "Start", options=[lbl for _, lbl in opts],
+                    index=val_to_idx(opts, settings.get('range2_start', display_values[-2] if len(display_values) >= 2 else display_values[0])),
+                    key=f"{prefix}_r2_start_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+                settings['range2_start'] = opts[[lbl for _, lbl in opts].index(r2_start_sel)][0]
+            with col5:
+                r2_end_sel = st.selectbox(
+                    "End", options=[lbl for _, lbl in opts],
+                    index=val_to_idx(opts, settings.get('range2_end', display_values[-1])),
+                    key=f"{prefix}_r2_end_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+                settings['range2_end'] = opts[[lbl for _, lbl in opts].index(r2_end_sel)][0]
+        else:
+            r2_start_val = int(settings['range2_start']) if settings['range2_start'] is not None else 3
+            r2_end_val = int(settings['range2_end']) if settings['range2_end'] is not None else 4
+            with col4:
+                settings['range2_start'] = st.number_input(
+                    "Start", min_value=1, max_value=100, value=r2_start_val,
+                    key=f"{prefix}_r2_start_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+            with col5:
+                settings['range2_end'] = st.number_input(
+                    "End", min_value=1, max_value=100, value=r2_end_val,
+                    key=f"{prefix}_r2_end_{index}",
+                    on_change=_mark_touched, args=(touched_key,)
+                )
+
         with col6:
             r2_becomes = st.selectbox(
                 "Becomes", options=BECOMES_OPTIONS(),
@@ -109,40 +186,26 @@ def _render_statement_config(statement: str, index: int, category: str, prefix: 
             )
             settings['range2_becomes'] = _becomes_to_value(r2_becomes)
 
-        # System missing range
+        # ── Missing Values (SYSMIS) ──
         st.write("**Missing Values (SYSMIS):**")
-        sysmis_becomes = st.selectbox(
-            "Becomes",
-            options=BECOMES_OPTIONS(),
-            index=_value_to_becomes_index(settings.get('sysmis_becomes')),
-            key=f"{prefix}_sysmis_becomes_{index}",
-            on_change=_mark_touched, args=(touched_key,)
-        )
-        settings['sysmis_becomes'] = _becomes_to_value(sysmis_becomes)
-
-        if is_neutral:
-            from src.frontend.Components.user_recoding.recode_prepping import _get_value_range
-            column = settings.get('matched_column')
-            if column:
-                original_values = _get_value_range(column)
-                if original_values and len(original_values) >= 2:
-                    is_unchanged = (
-                        r1_start == original_values[0] and
-                        r1_end == original_values[0] and
-                        settings['range1_becomes'] == 1 and
-                        r2_start == original_values[1] and
-                        r2_end == original_values[1] and
-                        settings['range2_becomes'] == 2
-                    )
-                    if not is_unchanged and statement not in st.session_state.changed_neutral:
-                        st.session_state.changed_neutral.append(statement)
-                    elif is_unchanged and statement in st.session_state.changed_neutral:
-                        st.session_state.changed_neutral.remove(statement)
+        _, col_sysmis = st.columns([2, 1])
+        with col_sysmis:
+            sysmis_becomes = st.selectbox(
+                "Becomes", options=BECOMES_OPTIONS(),
+                index=_value_to_becomes_index(settings.get('sysmis_becomes')),
+                key=f"{prefix}_sysmis_becomes_{index}",
+                on_change=_mark_touched, args=(touched_key,)
+            )
+            settings['sysmis_becomes'] = _becomes_to_value(sysmis_becomes)
 
         b1 = settings['range1_becomes'] if settings['range1_becomes'] is not None else 'None'
         b2 = settings['range2_becomes'] if settings['range2_becomes'] is not None else 'None'
+        r1s = settings.get('range1_start', '')
+        r1e = settings.get('range1_end', '')
+        r2s = settings.get('range2_start', '')
+        r2e = settings.get('range2_end', '')
         sysmis_str = f" (SYSMIS={settings['sysmis_becomes']})" if settings.get('sysmis_becomes') is not None else ""
         st.code(
-            f"recode ({r1_start} thru {r1_end}={b1}) ({r2_start} thru {r2_end}={b2}){sysmis_str}",
+            f"recode ({r1s} thru {r1e}={b1}) ({r2s} thru {r2e}={b2}){sysmis_str}",
             language="sql"
         )
