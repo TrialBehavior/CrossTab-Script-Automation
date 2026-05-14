@@ -4,3 +4,4 @@ pymupdf
 docx2pdf
 pyreadstat
 gunicorn
+openpyxl
